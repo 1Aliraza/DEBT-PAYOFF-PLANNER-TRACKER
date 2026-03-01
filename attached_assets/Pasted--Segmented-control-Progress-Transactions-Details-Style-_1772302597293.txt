@@ -1,0 +1,274 @@
+### Segmented control: Progress | Transactions | Details
+Style: pill-style, dark background, 
+selected = debt type color fill
+
+### Progress tab:
+Large ring: 200pt, stroke 20pt, 
+color = debt type color, glowing
+Center: % paid, large font, type color
+
+Below ring: two stat columns
+Left: "Principal Paid" in green
+Right: "Remaining" in red
+
+Timeline chart below:
+Dark area chart, debt type color gradient fill,
+dots at each month, interactive tooltips on tap
+Chart title: "Balance Over Time"
+
+"What would happen if..." section:
+Input: "I add $X extra/month"
+Instantly shows new payoff date and interest saved
+Comparison: current vs with extra — side by side
+
+### Transactions tab:
+Segmented: Upcoming | Past
+
+Timeline design (vertical line left, nodes right):
+Upcoming: hollow pulsing nodes (debt type color)
+Past paid: filled green nodes with checkmark
+Past missed: filled red nodes with X
+
+Each node:
+date label + payment type badge + amount
+
+For upcoming items:
+  "Mark as Paid" button on tap → opens confirm sheet
+  Confirm sheet: shows amount, date, 
+  [Confirm Payment] button → green animation + haptic
+
+### Details tab:
+Grouped sections as glassmorphism cards:
+
+CARD 1 — Loan Info:
+  Category, Nickname, Custom Note (editable inline)
+
+CARD 2 — Balance & Rate:
+  Current Balance (editable), APR (editable),
+  Credit Limit toggle (if credit card), Promo Period toggle
+
+CARD 3 — Payment Terms:
+  Min Payment, Calculation method, Frequency, Due day
+
+CARD 4 — Actions:
+  [Edit All Details] teal button
+  [Delete Debt] red destructive button (confirmation required)
+
+All editable fields: tap to edit inline,
+field gets teal border + cursor, 
+Done button in keyboard toolbar
+
+---
+
+## ADD DEBT SHEET — Full Spec
+
+Present as full-screen sheet (not half-sheet)
+Dark background matching app theme
+
+### Top bar:
+[Cancel]    Add Debt    [Save ✓]
+(Save button: disabled = gray, enabled = teal + glow)
+
+### Form sections (glassmorphism cards on dark background):
+
+SECTION 1 — Identity:
+Large debt type icon picker (horizontal scroll of colored circles):
+💳 💊 🎓 🏛 🚗 👤 ❓
+Each circle: gradient fill matching debt type color,
+selected = larger scale + glow + checkmark overlay
+
+Debt nickname field: large text, white, 
+placeholder in secondary color
+
+SECTION 2 — Balance:
+"Current Balance" — large number input
+$ prefix in teal, number in white, size 36 font
+"Original Balance" — smaller below, 
+pre-fills to match current balance,
+hint: "Used to track your progress"
+
+SECTION 3 — Interest:
+APR input with % suffix
+Live indicator bar below: 
+0% ━━━━━━━━━━━━━━━━━━━━━━━━━ 30%+
+Colored fill: green < 10%, amber 10-20%, red > 20%
+Floating warning if > 20%: "⚠️ High rate — you may qualify for lower"
+
+SECTION 4 — Payment:
+Min monthly payment (currency input)
+Payment frequency: pill selector (Monthly | Bi-weekly | Weekly)
+Due day: elegant circular dial or stepper showing ordinal (1st, 15th, 29th)
+
+SECTION 5 — Optional:
+Notes: multiline text field
+Secured/Unsecured: large toggle with icons
+
+LIVE PREVIEW (always visible, bottom of form):
+Floating card above Save button (not scrollable away):
+"At X% APR you'll pay ~$XXX in interest this year"
+Updates as user types APR + balance
+Color: amber if moderate, red if high, green if low
+
+SAVE BUTTON:
+Full width, gradient green, large (56pt height), cornerRadius 16
+Glowing shadow when enabled
+"Add This Debt →" with arrow icon
+Disabled state: flat gray, no shadow
+On tap when valid: 
+  1. Button shows loading spinner briefly
+  2. Sheet dismisses
+  3. New debt card animates into the list from bottom
+  4. Success haptic fires
+On tap when invalid:
+  Invalid fields shake (spring animation left-right)
+  Error haptic fires
+  Error messages appear below each invalid field
+
+---
+
+## ONBOARDING FLOW — 4 Premium Screens
+
+Dark theme throughout (matching app)
+Progress: animated capsule dots at bottom
+
+### Screen 1 — Welcome (dark, dramatic):
+Background: animated gradient that slowly shifts 
+(#0A0E1A → #0D1B2A → #0A1628, loops smoothly)
+
+Center: Large app icon with glowing ring around it
+  Appears with scale spring animation from 0 to 1
+
+Title: "Break Free From Debt."  (white, huge, rounded bold)
+Subtitle: "Finally."  (neonTeal, italic, slightly smaller)
+
+Body: "The most powerful free debt payoff app.
+       No paywalls. No tricks. No BS."
+(white.opacity(0.7), centered)
+
+Social proof row: 
+⭐⭐⭐⭐⭐  "Every feature your competitors charge $15/mo for — free."
+
+CTA: Full-width gradient button (teal → green)
+"Start My Journey →"
+Glow shadow below button
+
+Skip: "I'll explore on my own" in tiny secondary text
+
+### Screen 2 — Features (dark, card animations):
+Title: "Everything. Free."
+Subtitle: "No catches."
+
+4 feature cards slide in from right, staggered 0.1s delay each:
+
+Card 1 (teal border): ⚡ "Avalanche & Snowball"
+  "Both strategies. Competitors charge $5/mo."
+
+Card 2 (purple border): 🎯 "What-If Scenarios"  
+  "See how $100 extra changes your entire plan."
+
+Card 3 (green border): 📊 "Full Analytics"
+  "Charts, projections, exports. All free."
+
+Card 4 (amber border): 💬 "Expert Access"
+  "Qualify? Get a free professional consultation."
+
+Each card: glassmorphism, colored left border, 
+icon in circle matching border color,
+FREE badge top right (green pill)
+
+CTA: "See How It Works →"
+
+### Screen 3 — Add First Debt (dark, interactive):
+Title: "Let's see your"
+Subtitle: "debt-free date." (teal)
+Caption: "Takes 30 seconds."
+
+4 inputs on dark glassmorphism cards:
+Each input: large, white text, teal focus border
+[What's this debt? ________________]
+[$ Current balance ________________]
+[APR% ___________________________]
+[$ Min monthly payment ____________]
+
+As user fills in each field:
+  - That field gets a teal check on the right
+  - Next field subtly pulses to invite input
+
+CTA: "Show My Payoff Date →" 
+(disabled = gray, enabled after balance + APR + minPayment filled)
+
+Skip link below: small text
+
+### Screen 4 — Payoff Reveal (dark, celebratory):
+Background: subtle confetti particle animation using Canvas
+(small colored dots floating upward slowly)
+
+Top: ✅ large animated checkmark (draws itself)
+
+"Your debt-free date:"
+JUNE 2027  ← enormous, teal, springs in with bounce animation
+"18 months from today"
+
+Reveal cards (slide up with stagger):
+Card 1: "Total interest you'd pay at minimums: $2,234"
+Card 2: "With $100 extra/month: Free by Jan 2027 (saves $387) 🎯"
+Card 3: "You're already ahead of 73% of Americans tackling debt"
+
+CTA: Large gradient button
+"Let's Crush This Debt 💪"
+On tap: animate into main app (not a dismiss — a zoom transition)
+
+---
+
+## ANIMATIONS — IMPLEMENT ALL OF THESE
+
+1. App launch: logo scales up with spring, then TabView fades in
+2. Number counters: all monetary values count up from 0 on appear
+3. Progress rings: draw from 0 to actual value, spring overshoot
+4. Chart lines: draw from left to right over 0.8s on appear
+5. Cards: fade + slide up (offset Y: 30 → 0) staggered 0.05s per card
+6. Debt card add: new card slides in from bottom of list
+7. Payment marked paid: row turns green, checkmark draws, 
+   then slides to "Paid" section
+8. Milestone reached: full-screen confetti burst (Canvas particle system)
+   with large celebration text that scales in
+9. Tab switch: subtle scale animation on tab icon (1.0 → 1.2 → 1.0)
+10. Slider drag: payoff date number counts up/down in real time
+
+---
+
+## CONSTRAINTS
+
+- Pure SwiftUI only — no UIKit except for haptics and biometrics
+- No third-party chart libraries — build all charts with Canvas, Path, Shape
+- No third-party animation libraries — SwiftUI animations only
+- All charts interactive (tap for tooltips)
+- Dark mode IS the design (no light mode needed)
+- iOS 17+ only, SwiftData for persistence
+- No force unwraps
+- Every screen works with empty state (0 debts) — show illustrated empty states
+- Empty states: dark background, subtle illustration built in SwiftUI 
+  (NOT a flat gray ghost image like the screenshots show)
+
+---
+
+## BUILD ORDER
+
+1. Design system: Color+Extensions, fonts, card modifiers, glow modifiers
+2. SwiftData models
+3. PayoffCalculator engine (pure Swift)
+4. CTATriggerEngine
+5. App shell: TabView, navigation structure, dark background
+6. Onboarding (all 4 screens)
+7. Home tab (all sections)
+8. Debts tab + Add Debt sheet
+9. Debt Detail view (all 3 tabs)
+10. Strategy tab
+11. Plan tab with roadmap
+12. Track tab with calendar
+13. All animations pass
+14. Empty states pass
+15. Haptics pass
+
+Build every file completely. No placeholders. No TODOs.
+Every screen must look like it belongs in the App Store's "Apps We Love" feature.

@@ -1,0 +1,233 @@
+Build a SwiftUI iOS app called "DebtFree - Payoff Planner & Tracker" following this exact specification:
+
+## ARCHITECTURE
+- SwiftUI with iOS 17+ target
+- MVVM architecture
+- SwiftData for local persistence (replaces CoreData)
+- Keychain via KeychainAccess package for sensitive financial data
+- TabView with 4 tabs: Debts, Strategy, Payoff Plan, Dashboard
+
+---
+
+## DATA MODELS
+```swift
+// Debt model
+- id: UUID
+- name: String (creditor name)
+- balance: Double
+- apr: Double
+- minimumPayment: Double
+- debtType: Enum (creditCard, medical, personalLoan, studentLoan, taxDebt, auto, other)
+- isSecured: Bool (auto-set by type, user overridable)
+- dueDate: Int (day of month 1-28)
+- dateAdded: Date
+```
+
+---
+
+## TAB 1 — DEBTS
+- Card-based list of all debts
+- Each card shows: name, balance (large), APR, minimum payment, payoff date estimate
+- Swipe left to delete, tap to edit
+- FAB (+) button to add new debt
+- Debt entry form: all fields from data model, smart type suggestions
+- On save: instantly recalculate all strategies and check CTA triggers
+- No limit on number of debts
+- Empty state with friendly illustration and "Add your first debt" CTA
+
+---
+
+## TAB 2 — STRATEGY
+- Three strategies side by side or in segmented picker: Snowball, Avalanche, Custom
+- Snowball: minimums on all, extra payment hits smallest balance first
+- Avalanche: minimums on all, extra payment hits highest APR first
+- Custom: user drags to reorder debts manually
+- For each strategy show: total interest paid, payoff date, months to debt free
+- Side-by-side comparison table of all three strategies
+- Extra monthly payment input slider ($0-$1000+) that recalculates instantly
+- "Aha moment" design — user sees avalanche saving $X vs minimums immediately
+
+---
+
+## TAB 3 — PAYOFF PLAN
+- Month-by-month amortization table for selected strategy
+- Shows each debt's payment per month, remaining balance, interest portion
+- Collapsible sections per debt
+- Export button: generate PDF of full plan using PDFKit
+- CSV export option via ShareSheet
+- This is the screen users open daily — make it clean and scannable
+
+---
+
+## TAB 4 — DASHBOARD
+- Large total debt balance with animated number
+- Debt-free countdown date with days remaining
+- Progress ring (SwiftUI Circle with trim) showing % paid off
+- Total interest saved vs minimum-only payments
+- Monthly payment breakdown ring: principal vs interest
+- What-If Scenario section:
+  - Slider: "What if I add $X/month extra?"
+  - Instant update of payoff date and interest saved
+  - "What if I get a $X,XXX windfall?" lump sum input
+- Payment logging: log a payment against any debt, calendar dot view
+- Milestone celebrations: confetti animation on first debt paid, 25/50/75/100% milestones
+- Shareable progress card (snapshot view as image for social sharing)
+
+---
+
+## CTA TRIGGER SYSTEM (Revenue Engine)
+Check these conditions on every data save and app open. Show as non-intrusive cards at the bottom of Dashboard tab — never as pop-ups or modal sheets.
+
+Trigger 1 — Debt Settlement:
+- Condition: total unsecured debt > $10,000
+- Card title: "You Could Save Thousands"
+- Body: "Based on your $XX,XXX in unsecured debt, you could potentially save between $X,XXX and $X,XXX through a debt resolution program."
+- Show inline savings estimate: 40-60% of enrolled unsecured debt
+- Show: current payoff date vs estimated 24-48 month program completion
+- Show: current monthly minimums vs estimated program payment
+- Disclaimer: "Estimates are for illustration. Results vary. Not all debts qualify."
+- CTA Button: "Get Your Free Assessment" → Lead Form Sheet
+
+Trigger 2 — Tax Resolution:
+- Condition: any debt of type taxDebt with balance > $10,000
+- Card title: "Tax Debt Relief Options"
+- Body: "Tax debt over $10K may qualify for IRS programs like Offer in Compromise. A free confidential consultation can evaluate your options."
+- CTA Button: "Get Free Tax Consultation" → Lead Form Sheet
+
+Trigger 3 — High Interest Loan:
+- Condition: any debt with APR > 20%
+- Card title: "Paying Too Much Interest?"
+- Body: Show side-by-side: current cost at [X]% APR vs estimated cost at 8-12% consolidation loan
+- Pre-qual fields: credit score range, income range, employment status
+- CTA Button: "See If You Qualify" → Lead Form Sheet
+
+Trigger 4 — Multiple Cards:
+- Condition: 3+ credit card debts
+- Card: "Simplify Your Payments. See consolidation options in a free evaluation."
+- CTA Button → Lead Form Sheet
+
+Trigger 5 — Missed Payment:
+- Condition: user logs missed/late payment
+- Card: "Falling behind? There are options. Talk to an expert — free and confidential."
+- CTA Button → Lead Form Sheet
+
+---
+
+## LEAD FORM SHEET
+Present as a sheet modal when any CTA is tapped.
+Fields:
+- First name, Last name
+- Email address
+- Phone number
+- Explicit consent checkbox: "I agree to be contacted by phone, text, and email"
+- Debt type (auto-filled from trigger, editable)
+- Approximate total amount (auto-filled from app data, editable)
+- Best time to call: Morning / Afternoon / Evening (segmented picker)
+- State of residence (picker)
+
+On submit:
+- POST to your backend API via URLSession: https://YOUR-REPLIT-BACKEND.repl.co/leads
+- JSON body with all fields above (never send exact debt balances — only approximate range)
+- Confirmation screen: "We'll be in touch within 1 business day" with your branding
+- Store submission locally so form doesn't show again for 30 days
+
+---
+
+## BACKEND (Express.js on Replit — separate Repl)
+```javascript
+POST /leads
+- Receive lead JSON
+- Validate required fields
+- Store in Replit DB
+- Forward to webhook/CRM (configurable env variable: WEBHOOK_URL)
+- Send confirmation email via Resend or Nodemailer
+- Return 200 with confirmation ID
+```
+
+---
+
+## SECURITY & STORAGE
+- All debt data stored in SwiftData with file protection: .completeUnlessOpen
+- Sensitive fields (balances, APR) additionally mirrored to Keychain for backup
+- Network calls: URLSession with TLS pinning
+- Lead form: HTTPS only, never log PII
+- Face ID / Touch ID lock: LAContext biometric check on app foreground
+- "Delete All My Data" button in Settings tab that wipes SwiftData store and Keychain
+- No exact financial data ever sent to backend
+
+---
+
+## ONBOARDING (3 screens max)
+Screen 1: "Take control of your debt" — value prop, Continue button
+Screen 2: "Add your first debt" — inline mini debt entry form
+Screen 3: "Here's your payoff date" — show calculated date, Enter App button
+Track onboarding completion in UserDefaults. Never show again after completion.
+
+---
+
+## SETTINGS (gear icon in navigation bar)
+- Biometric lock toggle
+- Monthly reminder notification toggle + time picker
+- Payment due date reminders toggle
+- Export all data (PDF + CSV)
+- Delete all my data
+- Privacy Policy link (open in SFSafariViewController)
+- About / version info
+
+---
+
+## PUSH NOTIFICATIONS
+- UNUserNotificationCenter for local notifications
+- Payment due reminders (3 days before, 1 day before)
+- Monthly progress summary (1st of each month)
+- Milestone celebrations (push when debt is paid off)
+- Never more than 2 notifications per week from app
+
+---
+
+## ADS (Non-intrusive)
+- Google AdMob banner: 320x50 at very bottom of Dashboard tab only
+- Wrapped in UIViewRepresentable
+- GADBannerView with your AdMob unit ID
+- Never interstitials, never pop-ups, never between tabs
+- Dark mode adaptive banner
+
+---
+
+## DESIGN SYSTEM
+- SF Pro font system-wide (automatic with SwiftUI)
+- Primary color: #2ECC71 (debt-free green) with dark mode variant
+- Card style: RoundedRectangle cornerRadius 16, shadow(radius: 4)
+- Progress rings: ZStack with Circle().trim() animated with withAnimation(.spring)
+- Haptic feedback: UIImpactFeedbackGenerator on save, pay, milestone
+- Full dark mode support using Color assets with light/dark variants
+- Minimum tap targets: 44x44pt
+- Skeleton loading states for any async operations
+
+---
+
+## CALCULATIONS ENGINE (Pure Swift — no external libraries)
+```swift
+// Avalanche: sort by APR descending, pay minimums + extra to first
+// Snowball: sort by balance ascending, pay minimums + extra to first  
+// For each strategy return: [MonthlySnapshot] with per-debt balance, interest, principal
+// MonthlySnapshot: month, totalBalance, totalInterestPaid, debtBreakdown
+// Run until all balances reach zero
+// Cap at 600 months to prevent infinite loops
+// Savings estimate: current strategy total interest - avalanche total interest
+```
+
+---
+
+## APP STORE METADATA
+- Bundle ID: com.yourname.debtfree
+- Display Name: DebtFree - Payoff Planner
+- Version: 1.0.0
+- Category: Finance
+- Age Rating: 4+
+- Privacy manifest: PrivacyInfo.xcprivacy declaring financial info and contact info usage
+- Include NSFaceIDUsageDescription in Info.plist
+
+---
+
+## FILE STRUCTURE
