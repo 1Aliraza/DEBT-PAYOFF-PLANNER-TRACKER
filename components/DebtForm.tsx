@@ -9,6 +9,7 @@ import {
   Platform,
   Switch,
   Animated,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,6 +26,7 @@ const DEBT_TYPES: { key: DebtType; icon: string; color: string }[] = [
   { key: "medical", icon: "medkit", color: "#E74C3C" },
   { key: "auto", icon: "car", color: "#1ABC9C" },
   { key: "taxDebt", icon: "business", color: "#F39C12" },
+  { key: "businessDebt", icon: "briefcase", color: "#34495E" },
   { key: "other", icon: "ellipsis-horizontal-circle", color: "#95A5A6" },
 ];
 
@@ -32,6 +34,8 @@ interface Props {
   initial?: Partial<Debt>;
   onSave: (debt: Omit<Debt, "id" | "dateAdded">) => Promise<void> | void;
   onCancel: () => void;
+  headerExtra?: React.ReactNode;
+  title?: string;
 }
 
 function formatCurrencyInput(value: string): string {
@@ -41,7 +45,7 @@ function formatCurrencyInput(value: string): string {
   return digits;
 }
 
-export function DebtForm({ initial, onSave, onCancel }: Props) {
+export function DebtForm({ initial, onSave, onCancel, headerExtra, title }: Props) {
   const scheme = useColorScheme();
   const isDark = scheme === "dark";
   const C = isDark ? Colors.dark : Colors.light;
@@ -66,6 +70,7 @@ export function DebtForm({ initial, onSave, onCancel }: Props) {
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
@@ -97,7 +102,7 @@ export function DebtForm({ initial, onSave, onCancel }: Props) {
     const m = parseFloat(minPayment);
     if (isNaN(m) || m < 0) errs.minPayment = "Enter a valid minimum payment";
     const dd = parseInt(dueDate);
-    if (isNaN(dd) || dd < 1 || dd > 28) errs.dueDate = "Due date must be between 1 and 28";
+    if (isNaN(dd) || dd < 1 || dd > 31) errs.dueDate = "Due date must be between 1 and 31";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -126,9 +131,8 @@ export function DebtForm({ initial, onSave, onCancel }: Props) {
   };
 
   const inputBase = {
-    backgroundColor: C.surfaceSecondary,
+    backgroundColor: "transparent",
     color: C.text,
-    borderColor: C.border,
   };
 
   return (
@@ -142,10 +146,16 @@ export function DebtForm({ initial, onSave, onCancel }: Props) {
           <Ionicons name="close" size={24} color={C.text} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: C.text }]}>
-          {initial?.id ? "Edit Debt" : "Add Debt"}
+          {title ?? "Debt Details"}
         </Text>
         <View style={{ width: 44 }} />
       </View>
+
+      {headerExtra && (
+        <View style={[styles.headerExtra]}>
+          {headerExtra}
+        </View>
+      )}
 
       <KeyboardAwareScrollViewCompat
         style={styles.scroll}
@@ -156,156 +166,155 @@ export function DebtForm({ initial, onSave, onCancel }: Props) {
         bottomOffset={80}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
-          <Text style={[styles.sectionLabel, { color: C.textSecondary }]}>Debt Type</Text>
-          <View style={styles.typeGrid}>
-            {DEBT_TYPES.map((t) => {
-              const isActive = debtType === t.key;
-              return (
-                <Pressable
-                  key={t.key}
-                  onPress={() => handleTypeSelect(t.key)}
-                  style={[
-                    styles.typeChip,
-                    {
-                      backgroundColor: isActive ? t.color + "18" : C.surfaceSecondary,
-                      borderColor: isActive ? t.color : "transparent",
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={t.icon as any}
-                    size={16}
-                    color={isActive ? t.color : C.textSecondary}
-                  />
-                  <Text
-                    style={[
-                      styles.typeChipLabel,
-                      { color: isActive ? t.color : C.textSecondary, fontWeight: isActive ? "600" : "500" },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {debtTypeLabel(t.key)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
         <Animated.View
-          style={[styles.card, styles.fieldsSection, { backgroundColor: C.surface, borderColor: C.border, transform: [{ translateX: shakeAnim }] }]}
+          style={[
+            styles.fieldsSection,
+            {
+              paddingHorizontal: 0,
+              paddingTop: 12,
+              paddingBottom: 24,
+              transform: [{ translateX: shakeAnim }],
+            },
+          ]}
         >
-          <FormField label="Creditor Name" error={errors.name} C={C}>
+          <FormField label="Category *" error={errors.debtType} C={C}>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setCategoryPickerOpen(true);
+              }}
+              style={[
+                styles.selectInput,
+                {
+                  backgroundColor: C.surfaceSecondary,
+                  borderColor: errors.debtType ? Colors.danger : C.border,
+                },
+              ]}
+            >
+              <Text style={[styles.selectText, { color: C.text }]}>
+                {debtTypeLabel(debtType)}
+              </Text>
+              <Ionicons name="chevron-down" size={18} color={C.textSecondary} />
+            </Pressable>
+          </FormField>
+
+          <FormField label="Nickname *" error={errors.name} C={C}>
             <TextInput
               style={[styles.input, inputBase, errors.name && styles.inputError]}
               value={name}
               onChangeText={(v) => { setName(v); if (errors.name) setErrors((e) => ({ ...e, name: "" })); }}
               placeholder="e.g. Chase Sapphire, Student Aid"
-              placeholderTextColor={C.textSecondary}
+              placeholderTextColor={C.textSecondary + "99"}
               autoCapitalize="words"
               returnKeyType="next"
+              onFocus={() => Haptics.selectionAsync()}
             />
           </FormField>
 
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <FormField label="Current Balance" prefix="$" error={errors.balance} C={C}>
-                <TextInput
-                  style={[styles.input, styles.inputWithPrefix, inputBase, errors.balance && styles.inputError]}
-                  value={balance}
-                  onChangeText={(v) => {
-                    setBalance(formatCurrencyInput(v));
-                    if (errors.balance) setErrors((e) => ({ ...e, balance: "" }));
-                  }}
-                  placeholder="5,000"
-                  placeholderTextColor={C.textSecondary}
-                  keyboardType="decimal-pad"
-                  returnKeyType="next"
-                />
-              </FormField>
-            </View>
-            <View style={{ flex: 1 }}>
-              <FormField label="Interest Rate" suffix="%" error={errors.apr} C={C}>
-                <TextInput
-                  style={[styles.input, styles.inputWithSuffix, inputBase, errors.apr && styles.inputError]}
-                  value={apr}
-                  onChangeText={(v) => {
-                    setApr(formatCurrencyInput(v));
-                    if (errors.apr) setErrors((e) => ({ ...e, apr: "" }));
-                  }}
-                  placeholder="18.99"
-                  placeholderTextColor={C.textSecondary}
-                  keyboardType="decimal-pad"
-                  returnKeyType="next"
-                />
-              </FormField>
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <FormField label="Min. Payment" prefix="$" error={errors.minPayment} C={C}>
-                <TextInput
-                  style={[styles.input, styles.inputWithPrefix, inputBase, errors.minPayment && styles.inputError]}
-                  value={minPayment}
-                  onChangeText={(v) => {
-                    setMinPayment(formatCurrencyInput(v));
-                    if (errors.minPayment) setErrors((e) => ({ ...e, minPayment: "" }));
-                  }}
-                  placeholder="150"
-                  placeholderTextColor={C.textSecondary}
-                  keyboardType="decimal-pad"
-                  returnKeyType="next"
-                />
-              </FormField>
-            </View>
-            <View style={{ flex: 1 }}>
-              <FormField label="Due Day" error={errors.dueDate} C={C} hint="1–28">
-                <TextInput
-                  style={[styles.input, inputBase, errors.dueDate && styles.inputError]}
-                  value={dueDate}
-                  onChangeText={(v) => {
-                    const digits = v.replace(/[^0-9]/g, "");
-                    setDueDate(digits);
-                    if (errors.dueDate) setErrors((e) => ({ ...e, dueDate: "" }));
-                  }}
-                  placeholder="15"
-                  placeholderTextColor={C.textSecondary}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  returnKeyType="done"
-                />
-              </FormField>
-            </View>
-          </View>
-
-          <View style={[styles.securedRow, { backgroundColor: C.surfaceSecondary, borderColor: C.border }]}>
-            <Ionicons name="lock-closed-outline" size={20} color={Colors.warning} />
-            <View style={styles.securedText}>
-              <Text style={[styles.securedLabel, { color: C.text }]}>Secured Debt</Text>
-              <Text style={[styles.securedSub, { color: C.textSecondary }]}>Collateral-backed (auto, mortgage)</Text>
-            </View>
-            <Switch
-              value={isSecured}
-              onValueChange={(v) => {
-                setIsSecured(v);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          <FormField label="Current balance *" prefix="$" error={errors.balance} C={C}>
+            <TextInput
+              style={[styles.input, styles.inputWithPrefix, inputBase, errors.balance && styles.inputError]}
+              value={balance}
+              onChangeText={(v) => {
+                setBalance(formatCurrencyInput(v));
+                if (errors.balance) setErrors((e) => ({ ...e, balance: "" }));
               }}
-              trackColor={{ true: Colors.primary, false: C.border }}
-              thumbColor="#fff"
-              ios_backgroundColor={C.border}
+              placeholder="5,000"
+                  placeholderTextColor={C.textSecondary + "99"}
+              keyboardType="decimal-pad"
+              returnKeyType="next"
+              onFocus={() => Haptics.selectionAsync()}
             />
-          </View>
+          </FormField>
 
-          {parseFloat(balance) > 0 && parseFloat(apr) > 0 && parseFloat(minPayment) > 0 && (
-            <View style={[styles.previewCard, { backgroundColor: Colors.primary + "12", borderColor: Colors.primary + "30" }]}>
-              <Ionicons name="calculator-outline" size={18} color={Colors.primary} />
-              <Text style={[styles.previewText, { color: C.text }]}>
-                ~${(parseFloat(balance) * (parseFloat(apr) / 100 / 12)).toFixed(2)}/mo in interest
-              </Text>
+          <FormField label="Annual Percentage Rate *" suffix="%" error={errors.apr} C={C}>
+            <TextInput
+              style={[styles.input, styles.inputWithSuffix, inputBase, errors.apr && styles.inputError]}
+              value={apr}
+              onChangeText={(v) => {
+                setApr(formatCurrencyInput(v));
+                if (errors.apr) setErrors((e) => ({ ...e, apr: "" }));
+              }}
+              placeholder="18.99"
+                  placeholderTextColor={C.textSecondary + "99"}
+              keyboardType="decimal-pad"
+              returnKeyType="next"
+              onFocus={() => Haptics.selectionAsync()}
+            />
+          </FormField>
+
+          <FormField label="Minimum payment *" prefix="$" error={errors.minPayment} C={C}>
+            <TextInput
+              style={[styles.input, styles.inputWithPrefix, inputBase, errors.minPayment && styles.inputError]}
+              value={minPayment}
+              onChangeText={(v) => {
+                setMinPayment(formatCurrencyInput(v));
+                if (errors.minPayment) setErrors((e) => ({ ...e, minPayment: "" }));
+              }}
+              placeholder="150"
+                  placeholderTextColor={C.textSecondary + "99"}
+              keyboardType="decimal-pad"
+              returnKeyType="next"
+              onFocus={() => Haptics.selectionAsync()}
+            />
+          </FormField>
+
+          <FormField label="Day of the month *" error={errors.dueDate} C={C}>
+            <View style={styles.dueGrid}>
+              {Array.from({ length: 30 }, (_, i) => i + 1).map((day) => {
+                const selected = parseInt(dueDate, 10) === day;
+                return (
+                  <Pressable
+                    key={day}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setDueDate(String(day));
+                      if (errors.dueDate) setErrors((e) => ({ ...e, dueDate: "" }));
+                    }}
+                    style={[
+                      styles.dueChip,
+                      {
+                        backgroundColor: selected ? Colors.primary : C.surfaceSecondary,
+                        borderColor: selected ? Colors.primary : C.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.dueChipText,
+                        { color: selected ? "#fff" : C.text },
+                      ]}
+                    >
+                      {day}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setDueDate("31");
+                  if (errors.dueDate) setErrors((e) => ({ ...e, dueDate: "" }));
+                }}
+                style={[
+                  styles.dueChip,
+                  {
+                    backgroundColor: parseInt(dueDate, 10) === 31 ? Colors.primary : C.surfaceSecondary,
+                    borderColor: parseInt(dueDate, 10) === 31 ? Colors.primary : C.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.dueChipText,
+                    { color: parseInt(dueDate, 10) === 31 ? "#fff" : C.text },
+                  ]}
+                >
+                  Last
+                </Text>
+              </Pressable>
             </View>
-          )}
+          </FormField>
         </Animated.View>
       </KeyboardAwareScrollViewCompat>
 
@@ -351,6 +360,70 @@ export function DebtForm({ initial, onSave, onCancel }: Props) {
           </LinearGradient>
         </Pressable>
       </View>
+
+      <Modal
+        visible={categoryPickerOpen}
+        animationType="slide"
+        presentationStyle="formSheet"
+        onRequestClose={() => setCategoryPickerOpen(false)}
+      >
+        <View style={[styles.container, { backgroundColor: C.surface }]}>
+          <View style={[styles.header, { borderBottomColor: C.border }]}>
+            <View style={{ width: 44 }} />
+            <Text style={[styles.headerTitle, { color: C.text }]}>Select Category</Text>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setCategoryPickerOpen(false);
+              }}
+              style={styles.headerIconBtn}
+            >
+              <Ionicons name="close" size={24} color={C.textSecondary} />
+            </Pressable>
+          </View>
+          <KeyboardAwareScrollViewCompat
+            style={styles.scroll}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: insets.bottom + 24 },
+            ]}
+          >
+            {DEBT_TYPES.map((t) => {
+              const selected = debtType === t.key;
+              return (
+                <Pressable
+                  key={t.key}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    handleTypeSelect(t.key);
+                    setCategoryPickerOpen(false);
+                    if (errors.debtType) setErrors((e) => ({ ...e, debtType: "" }));
+                  }}
+                  style={[
+                    styles.categoryRow,
+                    {
+                      borderBottomColor: C.border,
+                      backgroundColor: selected ? Colors.primary + "12" : "transparent",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.categoryRowText,
+                      { color: selected ? Colors.primary : C.text },
+                    ]}
+                  >
+                    {debtTypeLabel(t.key)}
+                  </Text>
+                  {selected && (
+                    <Ionicons name="checkmark" size={18} color={Colors.primary} />
+                  )}
+                </Pressable>
+              );
+            })}
+          </KeyboardAwareScrollViewCompat>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -375,12 +448,18 @@ function FormField({
   return (
     <View style={styles.field}>
       <View style={styles.fieldLabelRow}>
-        <Text style={[styles.fieldLabel, { color: C.textSecondary }]}>{label}</Text>
+        <Text style={[styles.fieldLabel, { color: C.text }]}>{label}</Text>
         {hint && (
           <Text style={[styles.fieldHint, { color: C.textSecondary }]}>{hint}</Text>
         )}
       </View>
-      <View style={styles.fieldInputWrap}>
+      <View
+        style={[
+          styles.fieldInputWrap,
+          { borderBottomColor: C.border },
+          error && styles.fieldInputError,
+        ]}
+      >
         {prefix && (
           <Text style={[styles.adornment, styles.adornmentLeft, { color: C.textSecondary }]}>
             {prefix}
@@ -413,8 +492,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingLeft: 16,
+    paddingRight: 16,
+    paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerIconBtn: {
@@ -424,13 +504,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
     letterSpacing: -0.3,
   },
+  headerExtra: {
+    paddingVertical: 8,
+    alignItems: "center",
+  },
   scroll: { flex: 1 },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 0,
+    paddingVertical: 16,
     gap: 16,
   },
   card: {
@@ -474,9 +559,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    paddingHorizontal: 16,
   },
   fieldLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "500",
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -487,23 +573,41 @@ const styles = StyleSheet.create({
   },
   fieldInputWrap: {
     position: "relative",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 6,
   },
-  input: {
+  selectInput: {
     borderWidth: 1,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === "ios" ? 14 : 12,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === "ios" ? 13 : 11,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  selectText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  input: {
+    borderWidth: 0,
+    borderRadius: 0,
+    paddingHorizontal: 0,
+    paddingVertical: Platform.OS === "ios" ? 10 : 8,
     fontSize: 16,
     fontWeight: "500",
   },
   inputWithPrefix: {
-    paddingLeft: 26,
+    // keep digits close to the "$" while aligning with label
+    paddingLeft: 18,
   },
   inputWithSuffix: {
     paddingRight: 26,
   },
   inputError: {
-    borderColor: Colors.danger,
+    borderBottomColor: Colors.danger,
   },
   adornment: {
     position: "absolute",
@@ -515,21 +619,26 @@ const styles = StyleSheet.create({
     top: Platform.OS === "android" ? 11 : 0,
   },
   adornmentLeft: {
-    left: 12,
+    // align "$" with the left edge of the label/content
+    left: 16,
   },
   adornmentRight: {
-    right: 12,
+    right: 18,
   },
   errorRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     marginTop: 1,
+    paddingHorizontal: 16,
   },
   errorText: {
     color: Colors.danger,
     fontSize: 11,
     flex: 1,
+  },
+  fieldInputError: {
+    borderBottomColor: Colors.danger,
   },
   securedRow: {
     flexDirection: "row",
@@ -554,6 +663,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     flex: 1,
+  },
+  categoryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  categoryRowText: {
+    fontSize: 16,
+  },
+  dueGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    columnGap: 10,
+    rowGap: 8,
+    marginTop: 4,
+    justifyContent: "flex-start",
+  },
+  dueChip: {
+    width: 40,
+    height: 32,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  dueChipText: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   footer: {
     paddingHorizontal: 20,

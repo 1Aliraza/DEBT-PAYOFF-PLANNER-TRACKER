@@ -416,6 +416,53 @@ export default function DashboardScreen() {
             )}
 
             <CTACards />
+
+            <View style={styles.comingSoonWrap}>
+              <LinearGradient
+                colors={isDark ? ["#0D2818", "#0A1F12"] : ["#E8F8EE", "#D4F0E0"]}
+                style={[styles.comingSoonCard, { borderColor: isDark ? "rgba(46,204,113,0.25)" : "rgba(46,204,113,0.35)" }]}
+              >
+                <View style={styles.comingSoonBadge}>
+                  <Ionicons name="rocket-outline" size={14} color="#fff" />
+                  <Text style={styles.comingSoonBadgeText}>We're building</Text>
+                </View>
+                <View style={styles.comingSoonCardHeader}>
+                  <View style={styles.comingSoonCardIconWrap}>
+                    <LinearGradient
+                      colors={[Colors.primary, Colors.primaryDark]}
+                      style={styles.comingSoonCardIcon}
+                    >
+                      <Ionicons name="sparkles" size={26} color="#fff" />
+                    </LinearGradient>
+                  </View>
+                  <View style={styles.comingSoonTitleWrap}>
+                    <Text style={[styles.comingSoonCardTitle, { color: C.text }]}>Coming soon</Text>
+                    <Text style={[styles.comingSoonCardSub, { color: C.textSecondary }]}>
+                      Like Duolingo — but for getting out of debt
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.comingSoonPills}>
+                  {[
+                    { icon: "people" as const, label: "Friends" },
+                    { icon: "people-circle" as const, label: "Community" },
+                    { icon: "flame" as const, label: "Streaks" },
+                    { icon: "sparkles" as const, label: "Celebrations" },
+                  ].map((item) => (
+                    <View
+                      key={item.label}
+                      style={[
+                        styles.comingSoonPill,
+                        { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.9)" },
+                      ]}
+                    >
+                      <Ionicons name={item.icon} size={16} color={Colors.primary} />
+                      <Text style={[styles.comingSoonPillLabel, { color: C.text }]}>{item.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              </LinearGradient>
+            </View>
           </>
         ) : (
           <View style={styles.emptyDash}>
@@ -431,6 +478,34 @@ export default function DashboardScreen() {
             <Text style={[styles.emptyDashBody, { color: C.textSecondary }]}>
               Head to the Debts tab to add your accounts. Your progress, payoff date, and personalized options will appear here.
             </Text>
+
+            <View style={styles.comingSoonWrap}>
+              <LinearGradient
+                colors={isDark ? ["#0D2818", "#0A1F12"] : ["#E8F8EE", "#D4F0E0"]}
+                style={[styles.comingSoonCard, { borderColor: isDark ? "rgba(46,204,113,0.25)" : "rgba(46,204,113,0.35)" }]}
+              >
+                <View style={styles.comingSoonBadge}>
+                  <Ionicons name="rocket-outline" size={14} color="#fff" />
+                  <Text style={styles.comingSoonBadgeText}>We're building</Text>
+                </View>
+                <View style={styles.comingSoonCardHeader}>
+                  <View style={styles.comingSoonCardIconWrap}>
+                    <LinearGradient
+                      colors={[Colors.primary, Colors.primaryDark]}
+                      style={styles.comingSoonCardIcon}
+                    >
+                      <Ionicons name="sparkles" size={26} color="#fff" />
+                    </LinearGradient>
+                  </View>
+                  <View style={styles.comingSoonTitleWrap}>
+                    <Text style={[styles.comingSoonCardTitle, { color: C.text }]}>Coming soon</Text>
+                    <Text style={[styles.comingSoonCardSub, { color: C.textSecondary }]}>
+                      Friends, community, streaks & celebrations — like Duolingo for debt.
+                    </Text>
+                  </View>
+                </View>
+              </LinearGradient>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -533,7 +608,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerTitle: { fontSize: 28, fontWeight: "700", letterSpacing: -0.5 },
-  headerSub: { fontSize: 13, marginTop: 2 },
+  headerSub: { fontSize: 14, marginTop: 2 },
   logBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -649,6 +724,67 @@ const styles = StyleSheet.create({
   paymentDate: { fontSize: 12, marginTop: 1 },
   paymentAmount: { fontSize: 15, fontWeight: "700" },
   emptyDash: { alignItems: "center", paddingVertical: 48, gap: 16, paddingHorizontal: 32 },
+  comingSoonWrap: { marginTop: 4 },
+  comingSoonCard: {
+    borderRadius: 20,
+    borderWidth: 1.5,
+    padding: 18,
+    gap: 14,
+    overflow: "hidden",
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  comingSoonBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 6,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  comingSoonBadgeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  comingSoonCardHeader: { flexDirection: "row", alignItems: "center", gap: 14 },
+  comingSoonCardIconWrap: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  comingSoonCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  comingSoonTitleWrap: { flex: 1 },
+  comingSoonCardTitle: { fontSize: 19, fontWeight: "800", letterSpacing: -0.3 },
+  comingSoonCardSub: { fontSize: 14, lineHeight: 20, marginTop: 2 },
+  comingSoonPills: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  comingSoonPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  comingSoonPillLabel: { fontSize: 14, fontWeight: "600" },
   emptyDashIcon: {
     width: 120,
     height: 120,

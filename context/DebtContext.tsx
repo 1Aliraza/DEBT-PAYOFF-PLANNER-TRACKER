@@ -158,7 +158,7 @@ export function DebtProvider({ children }: { children: React.ReactNode }) {
   );
 
   const hasHighAprDebt = useMemo(
-    () => debts.some((d) => d.apr > 20),
+    () => debts.some((d) => d.apr > 10),
     [debts]
   );
 

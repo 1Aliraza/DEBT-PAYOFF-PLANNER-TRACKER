@@ -43,8 +43,22 @@ const DEBT_TYPE_COLORS: Record<DebtType, string> = {
   medical: "#E74C3C",
   auto: "#1ABC9C",
   taxDebt: "#F39C12",
+  businessDebt: "#34495E",
   other: "#95A5A6",
 };
+
+const DEBT_TYPE_COLORS_DARK: Partial<Record<DebtType, string>> = {
+  // Lighten this type for readability on dark backgrounds
+  businessDebt: "#A9B6C2",
+};
+
+function getDebtTypeColor(type: DebtType, isDark: boolean): string {
+  return (
+    (isDark ? DEBT_TYPE_COLORS_DARK[type] : undefined) ??
+    DEBT_TYPE_COLORS[type] ??
+    Colors.primary
+  );
+}
 
 const MONTH_NAMES = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -144,7 +158,7 @@ function DebtCardItem({
 }) {
   const translateX = useSharedValue(0);
   const deleteWidth = 80;
-  const typeColor = DEBT_TYPE_COLORS[debt.debtType];
+  const typeColor = getDebtTypeColor(debt.debtType, isDark);
 
   const pan = Gesture.Pan()
     .activeOffsetX([-10, 10])
@@ -459,7 +473,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   headerSub: {
-    fontSize: 13,
+    fontSize: 14,
     marginTop: 2,
   },
   headerIconBtn: {

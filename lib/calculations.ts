@@ -5,6 +5,7 @@ export type DebtType =
   | "studentLoan"
   | "taxDebt"
   | "auto"
+  | "businessDebt"
   | "other";
 
 export interface Debt {
@@ -238,6 +239,7 @@ export function debtTypeLabel(type: DebtType): string {
     studentLoan: "Student Loan",
     taxDebt: "Tax Debt",
     auto: "Auto Loan",
+    businessDebt: "Business Debt",
     other: "Other",
   };
   return labels[type] ?? "Other";
@@ -251,6 +253,7 @@ export function debtTypeIcon(type: DebtType): string {
     studentLoan: "school",
     taxDebt: "business",
     auto: "car",
+    businessDebt: "briefcase",
     other: "ellipsis-horizontal-circle",
   };
   return icons[type] ?? "ellipsis-horizontal-circle";

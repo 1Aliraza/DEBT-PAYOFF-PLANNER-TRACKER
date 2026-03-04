@@ -129,7 +129,7 @@ export function LeadForm({ visible, onClose, triggerType, prefilledDebtType, pre
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Text style={[styles.sectionNote, { color: C.textSecondary }]}>
+            <Text style={[styles.sectionNote, { color: C.text }]}>
               Free, confidential assessment. No obligation.
             </Text>
 

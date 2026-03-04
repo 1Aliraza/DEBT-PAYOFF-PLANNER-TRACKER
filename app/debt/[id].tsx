@@ -60,6 +60,7 @@ const DEBT_TYPE_COLORS: Record<DebtType, string> = {
   medical: "#E74C3C",
   auto: "#1ABC9C",
   taxDebt: "#F39C12",
+  businessDebt: "#34495E",
   other: "#95A5A6",
 };
 
@@ -185,7 +186,7 @@ export default function DebtDetailScreen() {
   const [whatIfExtra, setWhatIfExtra] = useState(0);
   const [whatIfInput, setWhatIfInput] = useState("");
 
-  const typeColor = debt ? DEBT_TYPE_COLORS[debt.debtType] : Colors.primary;
+  const typeColor = debt ? (DEBT_TYPE_COLORS[debt.debtType] ?? Colors.primary) : Colors.primary;
 
   const debtPayments = useMemo(
     () => payments.filter((p) => p.debtId === id && !p.isMissed),

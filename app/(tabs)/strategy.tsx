@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerTitle: { fontSize: 28, fontWeight: "700", letterSpacing: -0.5 },
-  headerSub: { fontSize: 13, marginTop: 2 },
+  headerSub: { fontSize: 14, marginTop: 2 },
   scroll: { padding: 16, gap: 12 },
   ahaMoment: {
     flexDirection: "row",

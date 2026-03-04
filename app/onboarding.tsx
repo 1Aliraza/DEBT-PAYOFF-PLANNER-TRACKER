@@ -10,6 +10,7 @@ import {
   Platform,
   Animated,
   useColorScheme,
+  Modal,
 } from "react-native";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { router } from "expo-router";
@@ -19,6 +20,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useDebts } from "@/context/DebtContext";
+import { DebtForm } from "@/components/DebtForm";
 import {
   DebtType,
   debtTypeLabel,
@@ -31,13 +33,14 @@ import {
 const { width: W, height: H } = Dimensions.get("window");
 
 const DARK = {
-  bg: "#080E14",
-  card: "#0D1520",
-  cardBorder: "#1A2535",
-  text: "#FFFFFF",
-  textSub: "rgba(255,255,255,0.55)",
-  input: "#111A25",
-  inputBorder: "#1E2E40",
+  // Bright, Duolingo-style onboarding palette (still called DARK for reuse)
+  bg: "#FFFFFF",
+  card: "#FFFFFF",
+  cardBorder: "#E0F0E6",
+  text: "#05130A",
+  textSub: "#335547",
+  input: "#F4FBF7",
+  inputBorder: "#C9DFD2",
   teal: "#2ECC71",
   tealDim: "rgba(46,204,113,0.15)",
 };
@@ -93,6 +96,8 @@ const PARTICLE_COLORS = ["#2ECC71", "#3498DB", "#9B59B6", "#E67E22", "#E74C3C", 
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const { addDebt, setOnboardingDone } = useDebts();
+  const scheme = useColorScheme();
+  const isDarkMode = scheme === "dark";
   const [step, setStep] = useState<Step>(1);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -103,6 +108,7 @@ export default function OnboardingScreen() {
   const [minPayment, setMinPayment] = useState("");
   const [firstDebt, setFirstDebt] = useState<any>(null);
   const [payoffResult, setPayoffResult] = useState<any>(null);
+  const [formVisible, setFormVisible] = useState(false);
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = Math.max(insets.bottom, 20) + (Platform.OS === "web" ? 34 : 0);
@@ -149,6 +155,19 @@ export default function OnboardingScreen() {
 
   const step3Ready = balance.length > 0 && parseFloat(balance) > 0 && apr.length > 0;
 
+  const handleOnboardingDebtSave = async (data: Omit<any, "id" | "dateAdded">) => {
+    await addDebt(data);
+    const result = runStrategy(
+      [{ ...data, id: "preview", dateAdded: new Date().toISOString() }],
+      0,
+      "avalanche"
+    );
+    setFirstDebt(data);
+    setPayoffResult(result);
+    setFormVisible(false);
+    animateToStep(4);
+  };
+
   return (
     <View style={styles.root}>
       <Animated.View
@@ -174,6 +193,7 @@ export default function OnboardingScreen() {
             onBack={() => animateToStep(2)}
             ready={step3Ready}
             topPad={topPad} botPad={botPad}
+            onOpenDebtForm={() => setFormVisible(true)}
           />
         )}
         {step === 4 && (
@@ -194,12 +214,46 @@ export default function OnboardingScreen() {
               styles.dot,
               {
                 width: s === step ? 24 : 8,
-                backgroundColor: s === step ? DARK.teal : "rgba(255,255,255,0.2)",
+                backgroundColor: s === step
+                  ? DARK.teal
+                  : isDarkMode
+                  ? "rgba(255,255,255,0.28)"
+                  : "#C9DFD2",
               },
             ]}
           />
         ))}
       </View>
+      <Modal
+        visible={formVisible}
+        animationType="slide"
+        presentationStyle="formSheet"
+        onRequestClose={() => setFormVisible(false)}
+      >
+        <DebtForm
+          initial={undefined}
+          onSave={handleOnboardingDebtSave}
+          onCancel={() => setFormVisible(false)}
+          title="Debt free date"
+          headerExtra={
+            <View style={styles.dotsInline}>
+              {[1, 2, 3, 4].map((s) => (
+                <View
+                  key={s}
+                  style={[
+                    styles.dot,
+                    {
+                      width: s === 3 ? 24 : 8,
+                      backgroundColor:
+                        s === 3 ? Colors.primary : Colors.light.tabIconDefault + "50",
+                    },
+                  ]}
+                />
+              ))}
+            </View>
+          }
+        />
+      </Modal>
     </View>
   );
 }
@@ -208,6 +262,8 @@ function Screen1({ onNext, onSkip, topPad, botPad }: any) {
   const scaleAnim = useRef(new Animated.Value(0.6)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const starsAnim = useRef(new Animated.Value(0)).current;
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
 
   useEffect(() => {
     Animated.stagger(120, [
@@ -218,9 +274,13 @@ function Screen1({ onNext, onSkip, topPad, botPad }: any) {
   }, []);
 
   return (
-    <View style={[styles.root, { backgroundColor: DARK.bg }]}>
+    <View style={[styles.root, { backgroundColor: isDark ? "#080E14" : DARK.bg }]}>
       <LinearGradient
-        colors={["#0A1628", "#080E14", "#050A0E"]}
+        colors={
+          isDark
+            ? ["#0A1628", "#080E14", "#050A0E"]
+            : ["#E7F8EC", "#FFFFFF"]
+        }
         style={StyleSheet.absoluteFill}
       />
       <View style={[styles.s1Content, { paddingTop: topPad + 32, paddingBottom: botPad + 56 }]}>
@@ -239,9 +299,25 @@ function Screen1({ onNext, onSkip, topPad, botPad }: any) {
         </Animated.View>
 
         <Animated.View style={{ opacity: fadeAnim, gap: 10, alignItems: "center" }}>
-          <Text style={styles.s1Title}>Break Free{"\n"}From Debt.</Text>
+          <Text
+            style={[
+              styles.s1Title,
+              { color: isDark ? "#FFFFFF" : DARK.text },
+            ]}
+          >
+            Break Free{"\n"}From Debt.
+          </Text>
           <Text style={[styles.s1Subtitle, { color: DARK.teal }]}>Finally.</Text>
-          <Text style={styles.s1Body}>
+          <Text
+            style={[
+              styles.s1Body,
+              {
+                color: isDark
+                  ? "rgba(255,255,255,0.75)"
+                  : DARK.textSub,
+              },
+            ]}
+          >
             The most powerful debt payoff app.{"\n"}Your path to financial freedom starts here.
           </Text>
         </Animated.View>
@@ -250,7 +326,16 @@ function Screen1({ onNext, onSkip, topPad, botPad }: any) {
           <View style={styles.starsRow}>
             {[0,1,2,3,4].map(i => <Ionicons key={i} name="star" size={16} color="#F39C12" />)}
           </View>
-          <Text style={styles.s1StarText}>
+          <Text
+            style={[
+              styles.s1StarText,
+              {
+                color: isDark
+                  ? "rgba(255,255,255,0.7)"
+                  : "#5A7A62",
+              },
+            ]}
+          >
             "Every feature you need to crush debt — free."
           </Text>
         </Animated.View>
@@ -267,7 +352,18 @@ function Screen1({ onNext, onSkip, topPad, botPad }: any) {
             </LinearGradient>
           </Pressable>
           <Pressable onPress={onSkip} hitSlop={16}>
-            <Text style={styles.skipText}>I'll explore on my own</Text>
+            <Text
+              style={[
+                styles.skipText,
+                {
+                  color: isDark
+                    ? "rgba(255,255,255,0.6)"
+                    : "#5A7A62",
+                },
+              ]}
+            >
+              I'll explore on my own
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -305,6 +401,8 @@ const FEATURE_CARDS = [
 function Screen2({ onNext, onSkip, onBack, topPad, botPad }: any) {
   const cardAnims = useRef(FEATURE_CARDS.map(() => new Animated.Value(60))).current;
   const fadeAnims = useRef(FEATURE_CARDS.map(() => new Animated.Value(0))).current;
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
 
   useEffect(() => {
     Animated.stagger(100, FEATURE_CARDS.map((_, i) =>
@@ -316,20 +414,45 @@ function Screen2({ onNext, onSkip, onBack, topPad, botPad }: any) {
   }, []);
 
   return (
-    <View style={[styles.root, { backgroundColor: DARK.bg }]}>
-      <LinearGradient colors={["#0A1628", "#080E14"]} style={StyleSheet.absoluteFill} />
+    <View style={[styles.root, { backgroundColor: isDark ? "#080E14" : DARK.bg }]}>
+      <LinearGradient
+        colors={isDark ? ["#0A1628", "#080E14"] : ["#E7F8EC", "#FFFFFF"]}
+        style={StyleSheet.absoluteFill}
+      />
       <ScrollView
         contentContainerStyle={[styles.s2Content, { paddingTop: topPad + 16, paddingBottom: botPad + 64 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Pressable onPress={onBack} style={styles.backBtn} hitSlop={12}>
-          <Ionicons name="chevron-back" size={22} color="rgba(255,255,255,0.5)" />
+        <Pressable onPress={onBack} style={styles.backBtn} hitSlop={16}>
+          <Ionicons
+            name="chevron-back"
+            size={28}
+            color={isDark ? "rgba(255,255,255,0.5)" : "#5A7A62"}
+          />
         </Pressable>
 
         <View style={{ gap: 8, marginBottom: 24 }}>
-          <Text style={styles.s2Title}>Everything.</Text>
+          <Text
+            style={[
+              styles.s2Title,
+              { color: isDark ? "#FFFFFF" : DARK.text },
+            ]}
+          >
+            Everything.
+          </Text>
           <Text style={[styles.s2TitleGreen, { color: DARK.teal }]}>Free.</Text>
-          <Text style={styles.s2Sub}>No paywalls. No catches. No gimmicks.</Text>
+          <Text
+            style={[
+              styles.s2Sub,
+              {
+                color: isDark
+                  ? "rgba(255,255,255,0.75)"
+                  : DARK.textSub,
+              },
+            ]}
+          >
+            No paywalls. No catches. No gimmicks.
+          </Text>
         </View>
 
         {FEATURE_CARDS.map((card, i) => (
@@ -341,6 +464,8 @@ function Screen2({ onNext, onSkip, onBack, topPad, botPad }: any) {
                 borderLeftColor: card.color,
                 opacity: fadeAnims[i],
                 transform: [{ translateX: cardAnims[i] }],
+                backgroundColor: isDark ? "#0D1520" : DARK.card,
+                borderColor: isDark ? "#1A2535" : DARK.cardBorder,
               },
             ]}
           >
@@ -349,12 +474,30 @@ function Screen2({ onNext, onSkip, onBack, topPad, botPad }: any) {
             </View>
             <View style={{ flex: 1 }}>
               <View style={styles.featureTitleRow}>
-                <Text style={styles.featureTitle}>{card.title}</Text>
+                <Text
+                  style={[
+                    styles.featureTitle,
+                    { color: isDark ? "#FFFFFF" : DARK.text },
+                  ]}
+                >
+                  {card.title}
+                </Text>
                 <View style={styles.freeBadge}>
                   <Text style={styles.freeBadgeText}>FREE</Text>
                 </View>
               </View>
-              <Text style={styles.featureDesc}>{card.desc}</Text>
+              <Text
+                style={[
+                  styles.featureDesc,
+                  {
+                    color: isDark
+                      ? "rgba(255,255,255,0.7)"
+                      : DARK.textSub,
+                  },
+                ]}
+              >
+                {card.desc}
+              </Text>
             </View>
           </Animated.View>
         ))}
@@ -371,7 +514,18 @@ function Screen2({ onNext, onSkip, onBack, topPad, botPad }: any) {
             </LinearGradient>
           </Pressable>
           <Pressable onPress={onSkip} hitSlop={16}>
-            <Text style={styles.skipText}>Skip to app</Text>
+            <Text
+              style={[
+                styles.skipText,
+                {
+                  color: isDark
+                    ? "rgba(255,255,255,0.6)"
+                    : "#5A7A62",
+                },
+              ]}
+            >
+              Skip to app
+            </Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -382,142 +536,105 @@ function Screen2({ onNext, onSkip, onBack, topPad, botPad }: any) {
 function Screen3({
   debtName, setDebtName, debtType, setDebtType,
   balance, setBalance, apr, setApr, minPayment, setMinPayment,
-  onNext, onSkip, onBack, ready, topPad, botPad,
+  onNext, onSkip, onBack, ready, topPad, botPad, onOpenDebtForm,
 }: any) {
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   return (
-    <View style={[styles.root, { backgroundColor: DARK.bg }]}>
-      <LinearGradient colors={["#0A1628", "#080E14"]} style={StyleSheet.absoluteFill} />
+    <View
+      style={[
+        styles.root,
+        { backgroundColor: useColorScheme() === "dark" ? "#080E14" : DARK.bg },
+      ]}
+    >
+      <LinearGradient
+        colors={useColorScheme() === "dark" ? ["#0A1628", "#080E14"] : ["#E7F8EC", "#FFFFFF"]}
+        style={StyleSheet.absoluteFill}
+      />
       <KeyboardAwareScrollViewCompat
         contentContainerStyle={[styles.s3Content, { paddingTop: topPad + 16, paddingBottom: botPad + 120 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         bottomOffset={24}
       >
-        <Pressable onPress={onBack} style={styles.backBtn} hitSlop={12}>
-          <Ionicons name="chevron-back" size={22} color="rgba(255,255,255,0.5)" />
+        <Pressable onPress={onBack} style={styles.backBtn} hitSlop={16}>
+          <Ionicons name="chevron-back" size={28} color={useColorScheme() === "dark" ? "rgba(255,255,255,0.5)" : "#5A7A62"} />
         </Pressable>
 
         <View style={{ gap: 6, marginBottom: 24 }}>
-          <Text style={styles.s3Title}>Let's see your</Text>
-          <Text style={[styles.s3TitleGreen, { color: DARK.teal }]}>debt-free date.</Text>
-          <Text style={styles.s3Sub}>Takes 30 seconds. No commitment.</Text>
-        </View>
-
-        <Text style={styles.s3Label}>Debt Type</Text>
-        <View style={styles.typeGrid}>
-          {DEBT_TYPES.map((t) => {
-            const isActive = debtType === t.key;
-            return (
-              <Pressable
-                key={t.key}
-                onPress={() => { setDebtType(t.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                style={[
-                  styles.typeGridItem,
-                  {
-                    backgroundColor: isActive ? t.color + "20" : DARK.card,
-                    borderColor: isActive ? t.color : DARK.cardBorder,
-                    borderWidth: isActive ? 1.5 : 1,
-                  },
-                ]}
-              >
-                <View style={[styles.typeGridIcon, { backgroundColor: isActive ? t.color : t.color + "25" }]}>
-                  <Ionicons name={t.icon as any} size={16} color={isActive ? "#fff" : t.color} />
-                </View>
-                <Text style={[styles.typeGridLabel, { color: isActive ? t.color : DARK.textSub }]} numberOfLines={1}>
-                  {debtTypeLabel(t.key)}
-                </Text>
-              </Pressable>
-            );
-          })}
+          <Text
+            style={[
+              styles.s3Title,
+              {
+                // White in dark mode for maximum contrast, dark text in light mode
+                color: useColorScheme() === "dark" ? "#FFFFFF" : DARK.text,
+              },
+            ]}
+          >
+            Let's see your
+          </Text>
+          <Text style={[styles.s3TitleGreen, { color: DARK.teal }]}>
+            debt-free date.
+          </Text>
+          <Text
+            style={[
+              styles.s3Sub,
+              {
+                // Make subtitle high-contrast in dark mode
+                color:
+                  useColorScheme() === "dark"
+                    ? "rgba(255,255,255,0.9)"
+                    : DARK.textSub,
+              },
+            ]}
+          >
+            Takes 30 seconds. No commitment.
+          </Text>
         </View>
 
         <View style={styles.s3Fields}>
-          {[
-            {
-              key: "name",
-              label: "Creditor Name",
-              value: debtName,
-              setValue: setDebtName,
-              placeholder: "Chase, Student Aid, Hospital…",
-              keyboard: "default",
-            },
-            {
-              key: "balance",
-              label: "Current Balance",
-              prefix: "$",
-              value: balance,
-              setValue: (v: string) => setBalance(v.replace(/[^0-9.]/g, "")),
-              placeholder: "5,000",
-              keyboard: "decimal-pad",
-              filled: balance.length > 0,
-            },
-            {
-              key: "apr",
-              label: "Interest Rate (APR)",
-              suffix: "%",
-              value: apr,
-              setValue: (v: string) => setApr(v.replace(/[^0-9.]/g, "")),
-              placeholder: "18.99",
-              keyboard: "decimal-pad",
-              filled: apr.length > 0,
-            },
-            {
-              key: "min",
-              label: "Min. Monthly Payment",
-              prefix: "$",
-              value: minPayment,
-              setValue: (v: string) => setMinPayment(v.replace(/[^0-9.]/g, "")),
-              placeholder: `~$${balance ? (parseFloat(balance) * 0.02).toFixed(0) : "100"}`,
-              keyboard: "decimal-pad",
-              optional: true,
-            },
-          ].map((field) => (
-            <View key={field.key} style={[styles.s3Field, { borderColor: focusedField === field.key ? DARK.teal : DARK.cardBorder }]}>
-              <View style={styles.s3FieldTop}>
-                <Text style={styles.s3FieldLabel}>{field.label}</Text>
-                {field.optional && <Text style={[styles.s3FieldOptional, { color: DARK.textSub }]}>Optional</Text>}
-                {(field as any).filled && (
-                  <Ionicons name="checkmark-circle" size={16} color={DARK.teal} />
-                )}
-              </View>
-              <View style={styles.s3FieldInputRow}>
-                {field.prefix && <Text style={styles.s3FieldAdornment}>{field.prefix}</Text>}
-                <TextInput
-                  style={styles.s3Input}
-                  value={field.value}
-                  onChangeText={field.setValue}
-                  placeholder={field.placeholder}
-                  placeholderTextColor="rgba(255,255,255,0.2)"
-                  keyboardType={field.keyboard as any}
-                  onFocus={() => setFocusedField(field.key)}
-                  onBlur={() => setFocusedField(null)}
-                  autoCapitalize={field.key === "name" ? "words" : "none"}
-                />
-                {(field as any).suffix && <Text style={styles.s3FieldAdornment}>{(field as any).suffix}</Text>}
-              </View>
-            </View>
-          ))}
-        </View>
+          <Text
+            style={[
+              styles.s3Info,
+              {
+                // Body copy also higher contrast in dark mode for readability
+                color:
+                  useColorScheme() === "dark"
+                    ? "rgba(255,255,255,0.85)"
+                    : DARK.textSub,
+              },
+            ]}
+          >
+            Add a debt using the same sheet you’ll use in the app. We’ll show your real debt‑free date, and you can edit or add more later.
+          </Text>
 
-        <View style={styles.s3Btns}>
           <Pressable
-            onPress={onNext}
-            disabled={!ready}
-            style={({ pressed }) => [{ opacity: pressed || !ready ? (ready ? 0.85 : 0.4) : 1 }]}
+            onPress={onOpenDebtForm}
+            style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
           >
             <LinearGradient
-              colors={ready ? [DARK.teal, Colors.primaryDark] : ["#444", "#333"]}
+              colors={[DARK.teal, Colors.primaryDark]}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={styles.primaryBtn}
             >
-              <Text style={styles.primaryBtnText}>Show My Payoff Date</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
+              <Text style={styles.primaryBtnText}>Add a Debt</Text>
             </LinearGradient>
           </Pressable>
+
           <Pressable onPress={onSkip} hitSlop={16}>
-            <Text style={styles.skipText}>Skip — I'll add debts later</Text>
+            <Text
+              style={[
+                styles.skipText,
+                {
+                  color:
+                    useColorScheme() === "dark"
+                      ? "rgba(255,255,255,0.7)"
+                      : "#5A7A62",
+                },
+              ]}
+            >
+              Skip — I'll add debts later
+            </Text>
           </Pressable>
         </View>
       </KeyboardAwareScrollViewCompat>
@@ -567,6 +684,8 @@ function Screen4({ firstDebt, payoffResult, onEnter, topPad, botPad }: any) {
     ? Math.max(0, interest - withExtra.totalInterestPaid)
     : 0;
   const monthsSaved = withExtra ? Math.max(0, months - withExtra.totalMonths) : 0;
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
 
   const revealCards = firstDebt
     ? [
@@ -593,8 +712,11 @@ function Screen4({ firstDebt, payoffResult, onEnter, topPad, botPad }: any) {
       ];
 
   return (
-    <View style={[styles.root, { backgroundColor: DARK.bg }]}>
-      <LinearGradient colors={["#0A1628", "#080E14"]} style={StyleSheet.absoluteFill} />
+    <View style={[styles.root, { backgroundColor: isDark ? "#080E14" : DARK.bg }]}>
+      <LinearGradient
+        colors={isDark ? ["#0A1628", "#080E14"] : ["#E7F8EC", "#FFFFFF"]}
+        style={StyleSheet.absoluteFill}
+      />
       {particles.map((p) => (
         <Particle key={p.id} delay={p.delay} color={p.color} />
       ))}
@@ -611,7 +733,18 @@ function Screen4({ firstDebt, payoffResult, onEnter, topPad, botPad }: any) {
 
         {firstDebt && payoffDate ? (
           <>
-            <Text style={styles.s4PreTitle}>Your debt-free date:</Text>
+            <Text
+              style={[
+                styles.s4PreTitle,
+                {
+                  color: isDark
+                    ? "rgba(255,255,255,0.75)"
+                    : DARK.textSub,
+                },
+              ]}
+            >
+              Your debt-free date:
+            </Text>
             <Animated.Text
               style={[
                 styles.s4Date,
@@ -624,12 +757,43 @@ function Screen4({ firstDebt, payoffResult, onEnter, topPad, botPad }: any) {
             >
               {MONTH_NAMES[payoffDate.getMonth()]} {payoffDate.getFullYear()}
             </Animated.Text>
-            <Text style={styles.s4Sub}>{monthsToText(months)} from today</Text>
+            <Text
+              style={[
+                styles.s4Sub,
+                {
+                  color: isDark
+                    ? "rgba(255,255,255,0.7)"
+                    : DARK.textSub,
+                },
+              ]}
+            >
+              {monthsToText(months)} from today
+            </Text>
           </>
         ) : (
           <>
-            <Text style={styles.s4PreTitle}>You're All Set!</Text>
-            <Text style={styles.s4Sub}>
+            <Text
+              style={[
+                styles.s4PreTitle,
+                {
+                  color: isDark
+                    ? "rgba(255,255,255,0.75)"
+                    : DARK.textSub,
+                },
+              ]}
+            >
+              You're All Set!
+            </Text>
+            <Text
+              style={[
+                styles.s4Sub,
+                {
+                  color: isDark
+                    ? "rgba(255,255,255,0.7)"
+                    : DARK.textSub,
+                },
+              ]}
+            >
               Start adding your debts to see your personalized payoff plan.
             </Text>
           </>
@@ -645,13 +809,26 @@ function Screen4({ firstDebt, payoffResult, onEnter, topPad, botPad }: any) {
                   borderLeftColor: card.color,
                   opacity: cardsFade[i],
                   transform: [{ translateY: cardsAnim[i] }],
+                  backgroundColor: isDark ? "#0D1520" : DARK.card,
+                  borderColor: isDark ? "#1A2535" : DARK.cardBorder,
                 },
               ]}
             >
               <View style={[styles.s4CardIcon, { backgroundColor: card.color + "20" }]}>
                 <Ionicons name={card.icon as any} size={18} color={card.color} />
               </View>
-              <Text style={styles.s4CardText}>{card.text}</Text>
+              <Text
+                style={[
+                  styles.s4CardText,
+                  {
+                    color: isDark
+                      ? "rgba(255,255,255,0.75)"
+                      : DARK.textSub,
+                  },
+                ]}
+              >
+                {card.text}
+              </Text>
             </Animated.View>
           ))}
         </View>
@@ -660,9 +837,8 @@ function Screen4({ firstDebt, payoffResult, onEnter, topPad, botPad }: any) {
           <LinearGradient
             colors={[DARK.teal, Colors.primaryDark]}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={styles.primaryBtn}
+            style={[styles.primaryBtn, styles.s4PrimaryBtn]}
           >
-            <Ionicons name="rocket" size={20} color="#fff" />
             <Text style={styles.primaryBtnText}>
               {firstDebt ? "Get Started" : "Enter DebtFree"}
             </Text>
@@ -689,10 +865,16 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
-  backBtn: {
-    width: 44,
-    height: 44,
+  dotsInline: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  backBtn: {
+    width: 56,
+    height: 56,
+    alignItems: "flex-start",
     justifyContent: "center",
     marginBottom: 8,
   },
@@ -703,11 +885,15 @@ const styles = StyleSheet.create({
     gap: 10,
     borderRadius: 16,
     paddingVertical: 17,
+    paddingHorizontal: 24,
     shadowColor: DARK.teal,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 8,
+  },
+  s4PrimaryBtn: {
+    alignSelf: "stretch",
   },
   primaryBtnText: {
     color: "#fff",
@@ -715,7 +901,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   skipText: {
-    color: "rgba(255,255,255,0.35)",
+    color: "#5A7A62",
     fontSize: 14,
     textAlign: "center",
   },
@@ -744,7 +930,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   s1Title: {
-    color: "#fff",
+    color: DARK.text,
     fontSize: 44,
     fontWeight: "800",
     letterSpacing: -1.5,
@@ -760,7 +946,7 @@ const styles = StyleSheet.create({
     marginTop: -8,
   },
   s1Body: {
-    color: "rgba(255,255,255,0.55)",
+    color: DARK.textSub,
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
@@ -768,7 +954,7 @@ const styles = StyleSheet.create({
   s1Stars: { alignItems: "center", gap: 8 },
   starsRow: { flexDirection: "row", gap: 4 },
   s1StarText: {
-    color: "rgba(255,255,255,0.4)",
+    color: "#5A7A62",
     fontSize: 13,
     textAlign: "center",
     fontStyle: "italic",
@@ -784,7 +970,7 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   s2Title: {
-    color: "#fff",
+    color: DARK.text,
     fontSize: 40,
     fontWeight: "800",
     letterSpacing: -1,
@@ -796,7 +982,7 @@ const styles = StyleSheet.create({
     marginTop: -8,
   },
   s2Sub: {
-    color: "rgba(255,255,255,0.45)",
+    color: DARK.textSub,
     fontSize: 16,
     lineHeight: 22,
   },
@@ -825,7 +1011,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   featureTitle: {
-    color: "#fff",
+    color: DARK.text,
     fontSize: 15,
     fontWeight: "700",
     flex: 1,
@@ -843,7 +1029,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   featureDesc: {
-    color: "rgba(255,255,255,0.5)",
+    color: DARK.textSub,
     fontSize: 13,
     lineHeight: 19,
   },
@@ -855,7 +1041,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   s3Title: {
-    color: "#fff",
+    color: DARK.text,
     fontSize: 34,
     fontWeight: "800",
     letterSpacing: -0.8,
@@ -867,11 +1053,11 @@ const styles = StyleSheet.create({
     marginTop: -6,
   },
   s3Sub: {
-    color: "rgba(255,255,255,0.45)",
+    color: DARK.textSub,
     fontSize: 15,
   },
   s3Label: {
-    color: "rgba(255,255,255,0.4)",
+    color: "#5A7A62",
     fontSize: 11,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -918,7 +1104,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   s3FieldLabel: {
-    color: "rgba(255,255,255,0.5)",
+    color: DARK.textSub,
     fontSize: 12,
     fontWeight: "600",
     flex: 1,
@@ -934,18 +1120,25 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   s3FieldAdornment: {
-    color: "rgba(255,255,255,0.35)",
+    color: "#5A7A62",
     fontSize: 18,
     fontWeight: "600",
   },
   s3Input: {
     flex: 1,
-    color: "#fff",
+    color: DARK.text,
     fontSize: 20,
     fontWeight: "600",
     paddingVertical: 2,
   },
   s3Btns: { gap: 14 },
+
+  s3Info: {
+    color: DARK.textSub,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
 
   // Screen 4
   s4Content: {
@@ -962,7 +1155,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   s4PreTitle: {
-    color: "rgba(255,255,255,0.6)",
+    color: DARK.textSub,
     fontSize: 18,
     textAlign: "center",
   },
@@ -973,7 +1166,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   s4Sub: {
-    color: "rgba(255,255,255,0.5)",
+    color: DARK.textSub,
     fontSize: 16,
     textAlign: "center",
     marginTop: -8,
@@ -1002,7 +1195,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   s4CardText: {
-    color: "rgba(255,255,255,0.75)",
+    color: DARK.textSub,
     fontSize: 14,
     lineHeight: 20,
     flex: 1,

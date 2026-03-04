@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 12,
     letterSpacing: 0.2,
   },
   activeDot: {
